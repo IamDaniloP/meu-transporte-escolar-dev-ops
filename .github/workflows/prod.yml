@@ -36,7 +36,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      # 7️⃣ Deploy na EC2 via SSH
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.6
         with:
@@ -44,20 +43,26 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "🔧 Creating docker network..."
+            sudo docker network create app-network || true
+
             echo "📦 Pulling latest docker image..."
             sudo docker pull didopereira/meu-transporte-escolar-dev-ops:latest
-            
-            echo "🧹 Removing old container..."
+
+            echo "🧹 Removing old app container..."
             sudo docker rm -f meu-transporte-escolar-dev-ops || true
-            
-            echo "🚀 Starting new container..."
+
+            echo "🚀 Starting app container..."
             sudo docker run -d \
+              --network app-network \
               -p 8080:8080 \
-              -e DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }} \
-              -e DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-              -e DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e DATABASE_HOST=postgres-db \
+              -e DATABASE_PORT=5432 \
+              -e DATABASE_NAME=my-school-transportation \
+              -e DATABASE_USERNAME="${{secrets.DATABASE_USERNAME}}" \
+              -e DATABASE_PASSWORD="${{secrets.DATABASE_PASSWORD}}" \
+              -e JWT_SECRET="${{secrets.JWT_SECRET}}" \
               --name meu-transporte-escolar-dev-ops \
               didopereira/meu-transporte-escolar-dev-ops:latest
-            
+
             echo "✅ Deploy completed!"
