@@ -56,9 +56,9 @@ jobs:
             sudo docker run -d \
               --network app-network \
               -p 8080:8080 \
-              -e DATABASE_HOST=postgres-db \
-              -e DATABASE_PORT=5432 \
-              -e DATABASE_NAME=my-school-transportation \
+              -e DATABASE_HOST="${{secrets.DATABASE_HOST}}" \
+              -e DATABASE_PORT="${{secrets.DATABASE_PORT}}" \
+              -e DATABASE_NAME="${{secrets.DATABASE_NAME}}" \
               -e DATABASE_USERNAME="${{secrets.DATABASE_USERNAME}}" \
               -e DATABASE_PASSWORD="${{secrets.DATABASE_PASSWORD}}" \
               -e JWT_SECRET="${{secrets.JWT_SECRET}}" \
