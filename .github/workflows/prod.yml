@@ -1,7 +1,7 @@
-name: Deployment aws
+name: Deploy AWS - DEV OPS
 
-on: 
-  push: 
+on:
+  push:
     branches: [main]
 
 jobs:
@@ -17,26 +17,47 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Run tests
+        run: mvn test
+
       - name: Build java
         run: mvn clean install -DskipTests
 
       - name: Login Docker Hub
-        run: docker login -u ${{secrets.DOCKER_USERNAME}} -p ${{secrets.DOCKER_PASSWORD}}
-        
-      - name: Build docker image
-        run: docker build -t uesleicristiano/my-school-transportation-api  .
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: push image docker
-        run: docker push uesleicristiano/my-school-transportation-api
+      - name: Build docker image
+        run: docker build -t didopereira/meu-transporte-escolar-dev-ops:latest .
+
+      - name: Push docker image
+        run: docker push didopereira/meu-transporte-escolar-dev-ops:latest
 
   deploy:
     needs: build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - name: Pull image from docker hub
-        run: sudo docker pull uesleicristiano/my-school-transportation-api:latest
-      - name: Remove docker container
-        run: sudo docker rm -f my-school-transportation-api
-      - name: Run docker container
-        run: sudo docker run -d -p 8080:8080 -e DATABASE_USERNAME=${{secrets.DATABASE_USERNAME}} -e DATABASE_PASSWORD='${{secrets.DATABASE_PASSWORD}}' -e DATABASE_URL=${{secrets.DATABASE_URL}} -e JWT_SECRET=${{secrets.JWT_SECRET}} --name my-school-transportation-api uesleicristiano/my-school-transportation-api
-
+      # 7️⃣ Deploy na EC2 via SSH
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "📦 Pulling latest docker image..."
+            sudo docker pull didopereira/meu-transporte-escolar-dev-ops:latest
+            
+            echo "🧹 Removing old container..."
+            sudo docker rm -f meu-transporte-escolar-dev-ops || true
+            
+            echo "🚀 Starting new container..."
+            sudo docker run -d \
+              -p 8080:8080 \
+              -e DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }} \
+              -e DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+              -e DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              --name meu-transporte-escolar-dev-ops \
+              didopereira/meu-transporte-escolar-dev-ops:latest
+            
+            echo "✅ Deploy completed!"
